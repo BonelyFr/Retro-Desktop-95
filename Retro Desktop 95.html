@@ -1,0 +1,1425 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Retro Desktop 95</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* Layout: one full-screen blue desktop with an icon column at the left, black-and-white windows floating above it, and a white taskbar pinned to the bottom. Deliberately a single look (no dark mode). */
+:root {
+  --desk: #0000aa;
+  --folder: #ffd83d;
+  --folder-shade: #d9a900;
+  --paper: #ffffff;
+  --ink: #000000;
+  --alert: #e00000;
+  --ui: 'Pixelify Sans', Tahoma, 'Trebuchet MS', Verdana, sans-serif;
+  --mono: 'VT323', 'Courier New', monospace;
+  --bar: 44px;
+  --gl: max(16px, env(safe-area-inset-left, 0px));
+  --gr: max(16px, env(safe-area-inset-right, 0px));
+  --barh: calc(var(--bar) + env(safe-area-inset-bottom, 0px));
+  color-scheme: light;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--desk); color: var(--ink);
+  font: 16px/1.25 var(--ui); overflow: hidden;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px dashed currentColor; outline-offset: 2px; }
+
+.screen { position: fixed; inset: 0; overflow: hidden; background: var(--desk); }
+.desktop { position: absolute; left: 0; right: 0; top: 0; bottom: var(--barh); padding: env(safe-area-inset-top, 0px) var(--gr) 0 var(--gl); }
+.icons { height: 100%; display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 6px; padding-top: 10px; }
+.wins { position: absolute; inset: env(safe-area-inset-top, 0px) var(--gr) 0 var(--gl); pointer-events: none; }
+
+/* desktop icons */
+.dicon { width: 84px; height: 90px; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 4px 2px; background: none; border: 2px dotted transparent; color: #fff; cursor: pointer; }
+.dicon .ico { width: 42px; height: 42px; flex: none; }
+.dicon .lbl { font-size: 15px; line-height: 1.1; text-align: center; padding: 1px 3px; max-width: 100%; overflow-wrap: anywhere; text-shadow: 1px 1px 0 #000; }
+.dicon.sel { border-color: #fff; }
+.dicon.sel .lbl { background: var(--ink); text-shadow: none; }
+
+/* windows */
+.win { position: absolute; pointer-events: auto; background: var(--paper); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); display: flex; flex-direction: column; max-width: 100%; }
+.win.max { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; box-shadow: none; }
+.tb { display: flex; align-items: center; gap: 6px; height: 34px; padding: 3px 4px 3px 6px; flex: none; background: var(--paper); color: var(--ink); border-bottom: 2px solid var(--ink); touch-action: none; }
+.win.active .tb { background: var(--ink); color: var(--paper); }
+.ti { width: 20px; height: 20px; flex: none; background: var(--paper); }
+.ti svg, .tico svg, .mi .mico svg, .ficon svg, .dicon .ico svg { display: block; width: 100%; height: 100%; }
+.tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.tbtns { display: flex; gap: 4px; }
+.wb { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; background: var(--paper); color: var(--ink); border: 2px solid var(--ink); cursor: pointer; }
+.wb:active { background: var(--ink); color: var(--paper); }
+.win.active .wb:active { background: var(--paper); color: var(--ink); opacity: .6; }
+.wbody { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+.grip { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; touch-action: none; z-index: 5;
+  background: linear-gradient(135deg, transparent 50%, var(--ink) 50% 60%, transparent 60% 72%, var(--ink) 72% 82%, transparent 82%); }
+.win.max .grip, .win.fixed .grip { display: none; }
+
+/* shared controls */
+.btn { min-height: 30px; padding: 3px 10px; background: var(--paper); color: var(--ink); border: 2px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; white-space: nowrap; }
+.btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: none; background: var(--ink); color: var(--paper); }
+.btn.on, .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
+.btn.sm { min-height: 26px; padding: 1px 8px; }
+.inp { font: inherit; min-width: 0; flex: 1 1 120px; padding: 3px 6px; background: var(--paper); color: var(--ink); border: 2px solid var(--ink); -webkit-user-select: text; user-select: text; border-radius: 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px; border-bottom: 2px solid var(--ink); flex: none; }
+.strip { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px; border-bottom: 2px solid var(--ink); }
+.strip.list { max-height: 132px; overflow: auto; }
+.statusbar { flex: none; display: flex; justify-content: space-between; gap: 8px; padding: 3px 8px; border-top: 2px solid var(--ink); font-size: 14px; }
+.statusbar span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* files */
+.pathbar { flex: none; padding: 3px 8px; border-bottom: 2px solid var(--ink); font: 20px/1.1 var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.filegrid { flex: 1; min-height: 0; overflow: auto; padding: 8px; display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); align-content: start; gap: 6px; }
+.fitem { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; border: 2px solid transparent; cursor: pointer; min-width: 0; }
+.fitem .ficon { width: 38px; height: 38px; }
+.fitem .flabel { font-size: 14px; line-height: 1.1; text-align: center; overflow-wrap: anywhere; padding: 1px 3px; max-width: 100%; }
+.fitem.sel { border: 2px dotted var(--ink); }
+.fitem.sel .flabel { background: var(--ink); color: var(--paper); }
+.fitem .inp { flex: none; width: 100%; font-size: 14px; padding: 1px 3px; }
+.empty { grid-column: 1 / -1; padding: 24px 8px; text-align: center; font-size: 15px; }
+
+/* notepad */
+.npad { flex: 1; min-height: 0; width: 100%; resize: none; border: 0; outline: 0; padding: 8px; font: 21px/1.1 var(--mono); background: var(--paper); color: var(--ink); -webkit-user-select: text; user-select: text; border-radius: 0; }
+.npad.nowrap { white-space: pre; overflow: auto; }
+
+/* calculator */
+.calc { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.scr { border: 2px solid var(--ink); padding: 2px 8px 4px; text-align: right; font-family: var(--mono); min-width: 0; }
+.scr .hist { font-size: 19px; height: 20px; line-height: 20px; overflow: hidden; white-space: nowrap; }
+.scr .num { font-size: 42px; line-height: 1.05; height: 44px; overflow: hidden; white-space: nowrap; }
+.keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.key { height: 44px; padding: 0; min-width: 0; }
+.key.op, .key.eq { background: var(--ink); color: var(--paper); }
+.key.op:active:not(:disabled), .key.eq:active:not(:disabled) { background: var(--paper); color: var(--ink); }
+
+/* paint */
+.pstage { flex: 1; min-height: 0; overflow: auto; padding: 8px; background: radial-gradient(circle, #000 .8px, transparent 1px) 0 0 / 6px 6px, #fff; }
+.pcanvas { display: block; width: 100%; max-width: 640px; height: auto; border: 2px solid var(--ink); background: #fff; image-rendering: pixelated; touch-action: none; cursor: crosshair; }
+.pal { flex: none; display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 7px 8px; border-top: 2px solid var(--ink); }
+.sw { height: 24px; padding: 0; border: 2px solid var(--ink); cursor: pointer; min-width: 0; }
+.sw[aria-pressed="true"] { outline: 3px solid var(--ink); outline-offset: 1px; }
+
+/* minesweeper */
+.mines { padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.mhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+.lcd { background: #000; color: var(--alert); font: 30px/1 var(--mono); padding: 3px 7px; min-width: 62px; text-align: center; letter-spacing: .06em; border: 2px solid var(--ink); }
+.face { width: 42px; height: 42px; padding: 0; font: 26px/1 var(--mono); }
+.mgrid { display: grid; grid-template-columns: repeat(9, 28px); grid-auto-rows: 28px; border: 2px solid var(--ink); touch-action: manipulation; }
+.cell { width: 28px; height: 28px; padding: 0; margin: 0; border: 1px solid var(--ink); border-radius: 0; display: grid; place-items: center; font: 24px/1 var(--mono); cursor: pointer;
+  background: radial-gradient(circle at 1px 1px, #000 .7px, transparent 1px) 0 0 / 4px 4px, #fff; }
+.cell.open { background: var(--paper); cursor: default; }
+.cell.boom { background: var(--alert); }
+.cell svg { width: 18px; height: 18px; display: block; }
+.n1 { color: #0000ff; } .n2 { color: #007a00; } .n3 { color: #e00000; } .n4 { color: #000080; }
+.n5 { color: #800000; } .n6 { color: #008080; } .n7 { color: #000; } .n8 { color: #666; }
+.mfoot { display: flex; align-items: center; gap: 10px; width: 100%; font-size: 14px; }
+.mfoot span { flex: 1; min-width: 0; }
+
+/* tanks */
+.tstage { flex: 1; min-height: 0; display: grid; place-items: center; padding: 6px; background: var(--paper); overflow: hidden; }
+.tcanvas { display: block; background: #fff; touch-action: none; cursor: crosshair; }
+.tpad { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px; border-top: 2px solid var(--ink); }
+.tpad .dp { display: flex; gap: 6px; }
+.tpad .btn { min-width: 46px; min-height: 44px; padding: 0 10px; touch-action: none; }
+.thint { flex: none; padding: 3px 8px; border-top: 2px solid var(--ink); font-size: 13px; line-height: 1.25; }
+
+/* taskbar */
+.taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: var(--barh); z-index: 900; display: flex; align-items: center; gap: 8px; background: var(--paper); border-top: 3px solid var(--ink); padding: 0 var(--gr) env(safe-area-inset-bottom, 0px) var(--gl); }
+.start { display: flex; align-items: center; gap: 8px; font-weight: 600; min-height: 32px; flex: none; }
+.start .logo { width: 16px; height: 16px; display: block; }
+.start[aria-expanded="true"] { background: var(--ink); color: var(--paper); }
+.start[aria-expanded="true"] .logo rect { fill: var(--paper); }
+.tasks { flex: 1; min-width: 0; display: flex; gap: 6px; overflow: hidden; }
+.task { flex: 1 1 0; min-width: 34px; max-width: 160px; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 6px; background: var(--paper); border: 2px solid var(--ink); cursor: pointer; text-align: left; }
+.task .tico { width: 18px; height: 18px; flex: none; }
+.task .tlab { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.task.on { background: var(--ink); color: var(--paper); }
+.task.min { border-style: dashed; }
+.tray { flex: none; }
+.clock { min-width: 84px; font-variant-numeric: tabular-nums; box-shadow: none; }
+
+/* start menu and calendar */
+.menu { position: absolute; left: var(--gl); bottom: calc(var(--barh) + 2px); z-index: 950; display: flex; background: var(--paper); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); min-width: 220px; max-width: calc(100% - 32px); }
+.brand { width: 34px; flex: none; background: var(--ink); color: var(--paper); display: flex; align-items: flex-end; justify-content: center; padding: 8px 0; }
+.brand span { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 600; font-size: 20px; letter-spacing: .14em; white-space: nowrap; }
+.menu ul { list-style: none; margin: 0; padding: 4px; flex: 1; min-width: 0; }
+.mi { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 10px; background: none; border: 0; text-align: left; cursor: pointer; }
+.mi .mico { width: 26px; height: 26px; flex: none; }
+.mi:hover, .mi:focus-visible { background: var(--ink); color: var(--paper); outline: none; }
+.sep { height: 2px; background: var(--ink); margin: 4px 2px; }
+.cal { position: absolute; right: var(--gr); bottom: calc(var(--barh) + 2px); z-index: 950; width: 264px; max-width: calc(100% - 32px); background: var(--paper); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); padding: 8px; }
+.calhead { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; font-weight: 600; }
+.calgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.calgrid span { padding: 5px 0; font-variant-numeric: tabular-nums; }
+.calgrid .dow { font-size: 13px; border-bottom: 2px solid var(--ink); }
+.calgrid .today { background: var(--ink); color: var(--paper); }
+.calfoot { margin-top: 8px; padding-top: 6px; border-top: 2px solid var(--ink); font-size: 14px; text-align: center; }
+
+/* dialogs, shutdown, boot */
+.veil { position: absolute; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, .4); }
+.dlg { width: min(340px, 100%); background: var(--paper); border: 2px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+.dtb { background: var(--ink); color: var(--paper); padding: 6px 10px; font-weight: 600; }
+.dmsg { padding: 16px 12px; }
+.dbtns { display: flex; justify-content: flex-end; gap: 8px; padding: 0 12px 12px; }
+.off, .boot { position: absolute; inset: 0; z-index: 3000; background: #000; display: grid; place-items: center; text-align: center; padding: 24px; font-family: var(--mono); }
+.off { color: #ff9f1a; font-size: 30px; line-height: 1.15; cursor: pointer; }
+.off .hint { margin-top: 18px; font-size: 20px; opacity: .8; }
+.boot { color: #fff; font-size: 26px; }
+.boot b { display: block; font: 600 34px/1 var(--ui); letter-spacing: .12em; margin-bottom: 18px; }
+.bar { display: flex; gap: 4px; justify-content: center; margin-top: 16px; }
+.bar i { width: 18px; height: 16px; border: 2px solid #fff; }
+.bar i.f { background: #fff; }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="screen" id="screen">
+  <div class="desktop" id="desktop">
+    <div class="icons" id="icons"></div>
+    <div class="wins" id="wins"></div>
+  </div>
+  <div class="menu" id="menu" hidden></div>
+  <div class="cal" id="cal" hidden></div>
+  <div class="taskbar" id="taskbar">
+    <button class="btn start" id="start" type="button" aria-haspopup="true" aria-expanded="false">
+      <svg class="logo" viewBox="0 0 16 16" aria-hidden="true"><rect x="0" y="0" width="7" height="7" fill="#000"/><rect x="9" y="0" width="7" height="7" fill="#000"/><rect x="0" y="9" width="7" height="7" fill="#000"/><rect x="9" y="9" width="7" height="7" fill="#000"/></svg>
+      Start
+    </button>
+    <div class="tasks" id="tasks"></div>
+    <div class="tray"><button class="btn clock" id="clock" type="button" aria-label="Show calendar">--:--</button></div>
+  </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* ---------- helpers ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+function h(tag, props) {
+  const e = document.createElement(tag);
+  if (props) for (const k in props) {
+    const v = props[k];
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v;
+    else if (k === 'html') e.innerHTML = v;
+    else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (let i = 2; i < arguments.length; i++) {
+    const kids = [].concat(arguments[i]);
+    for (const kid of kids) {
+      if (kid == null || kid === false) continue;
+      e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    }
+  }
+  return e;
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- icons (32x32 pixel-style, folders yellow, rest black and white) ---------- */
+const svg = (inner) => '<svg viewBox="0 0 32 32" shape-rendering="crispEdges" aria-hidden="true" focusable="false">' + inner + '</svg>';
+const ICON = {
+  folder: svg('<path d="M2 6h11l3 3h14v18H2z" style="fill:var(--folder)" stroke="#000" stroke-width="2"/><path d="M2 12h28" stroke="#000" stroke-width="2"/><path d="M3 14h26v2H3z" fill="#fff" opacity=".6"/><path d="M3 25h26v1H3z" style="fill:var(--folder-shade)"/>'),
+  calc: svg('<rect x="6" y="3" width="20" height="26" fill="#fff" stroke="#000" stroke-width="2"/><rect x="9" y="6" width="14" height="6" fill="#000"/><g fill="#000"><rect x="9" y="14" width="4" height="3"/><rect x="14" y="14" width="4" height="3"/><rect x="19" y="14" width="4" height="3"/><rect x="9" y="19" width="4" height="3"/><rect x="14" y="19" width="4" height="3"/><rect x="19" y="19" width="4" height="3"/><rect x="9" y="24" width="4" height="3"/><rect x="14" y="24" width="4" height="3"/><rect x="19" y="24" width="4" height="3"/></g>'),
+  notepad: svg('<rect x="5" y="5" width="22" height="24" fill="#fff" stroke="#000" stroke-width="2"/><path d="M9 2v6M14 2v6M19 2v6M23 2v6" stroke="#000" stroke-width="2"/><path d="M9 14h14M9 19h14M9 24h9" stroke="#000" stroke-width="2"/>'),
+  paint: svg('<path d="M16 3C8 3 3 9 3 16c0 7 5 13 12 13 3 0 3-3 1-5-2-3 0-5 3-5h6c3 0 5-2 5-5C30 8 24 3 16 3z" fill="#fff" stroke="#000" stroke-width="2"/><circle cx="10" cy="14" r="2.2" fill="#e00000"/><circle cx="15" cy="9" r="2.2" fill="#ffd83d"/><circle cx="21" cy="10" r="2.2" fill="#0000aa"/><circle cx="9" cy="20" r="2.2" fill="#00a000"/>'),
+  mines: svg('<rect x="2" y="2" width="28" height="28" fill="#fff" stroke="#000" stroke-width="2"/><circle cx="16" cy="16" r="6" fill="#000"/><path d="M16 5v5M16 22v5M5 16h5M22 16h5M8 8l3 3M21 21l3 3M24 8l-3 3M11 21l-3 3" stroke="#000" stroke-width="2.5"/><rect x="13" y="13" width="3" height="3" fill="#fff"/>'),
+  tanks: svg('<rect x="2" y="2" width="28" height="28" fill="#fff" stroke="#000" stroke-width="2"/><rect x="6" y="16" width="20" height="9" fill="#fff" stroke="#000" stroke-width="2"/><path d="M6 20h20" stroke="#000" stroke-width="1.5"/><circle cx="14" cy="14" r="4" fill="#000"/><path d="M14 14h13" stroke="#000" stroke-width="3"/>'),
+  bin: svg('<path d="M7 9h18l-2 20H9z" fill="#fff" stroke="#000" stroke-width="2"/><path d="M5 9h22M12 9V5h8v4" fill="none" stroke="#000" stroke-width="2"/><path d="M13 13v12M16 13v12M19 13v12" stroke="#000" stroke-width="1.5"/>'),
+  file: svg('<path d="M7 3h13l6 6v20H7z" fill="#fff" stroke="#000" stroke-width="2"/><path d="M20 3v6h6" fill="none" stroke="#000" stroke-width="2"/><path d="M11 15h11M11 19h11M11 23h8" stroke="#000" stroke-width="2"/>'),
+  image: svg('<rect x="4" y="6" width="24" height="20" fill="#fff" stroke="#000" stroke-width="2"/><path d="M6 24l7-8 5 5 3-3 5 6z" fill="#000"/><circle cx="22" cy="12" r="2.5" fill="#ffd83d" stroke="#000"/>')
+};
+const GLYPH = {
+  min: '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 9h8" stroke="currentColor" stroke-width="2" fill="none"/></svg>',
+  max: '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><rect x="2" y="2" width="8" height="8" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  close: '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" fill="none"/></svg>'
+};
+const FLAG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2v12" stroke="#000" stroke-width="2"/><path d="M4 2l8 3-8 3z" fill="#e00000"/><path d="M2 14h8" stroke="#000" stroke-width="2"/></svg>';
+const MINE = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="4" fill="#000"/><path d="M8 1v14M1 8h14M3 3l10 10M13 3L3 13" stroke="#000" stroke-width="1.5"/><rect x="6" y="6" width="2" height="2" fill="#fff"/></svg>';
+const WRONG = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="#e00000" stroke-width="2.5"/></svg>';
+
+/* ---------- file system (kept in this browser) ---------- */
+const FS_KEY = 'retro95-fs-v1';
+let fs;
+const fsListeners = new Set();
+function defaultFS() {
+  return {
+    seq: 10,
+    nodes: {
+      root: { id: 'root', name: 'My Files', type: 'folder', parent: null },
+      docs: { id: 'docs', name: 'Documents', type: 'folder', parent: 'root' },
+      pics: { id: 'pics', name: 'Pictures', type: 'folder', parent: 'root' },
+      n1: { id: 'n1', name: 'readme.txt', type: 'text', parent: 'docs', content: 'Welcome to Retro 95.\n\nDouble-click (or double-tap) an icon to open it.\nEverything you save here stays in this browser.\n\nTry the Calculator, draw something in Paint, or play Minesweeper.\n' },
+      n2: { id: 'n2', name: 'to do.txt', type: 'text', parent: 'docs', content: '- water the plants\n- call the plumber\n- buy batteries\n' }
+    }
+  };
+}
+function loadFS() {
+  try {
+    const raw = localStorage.getItem(FS_KEY);
+    if (raw) { const o = JSON.parse(raw); if (o && o.nodes && o.nodes.root) return o; }
+  } catch (e) {}
+  return defaultFS();
+}
+function saveFS() {
+  try { localStorage.setItem(FS_KEY, JSON.stringify(fs)); return true; } catch (e) { return false; }
+}
+function fsChanged() {
+  const ok = saveFS();
+  Array.from(fsListeners).forEach((f) => f());
+  return ok;
+}
+fs = loadFS();
+const newId = () => 'n' + (fs.seq++);
+function live(id) {
+  let n = fs.nodes[id];
+  while (n) { if (n.trashed) return false; if (!n.parent) return true; n = fs.nodes[n.parent]; }
+  return false;
+}
+function children(id) {
+  return Object.values(fs.nodes).filter((n) => n.parent === id && !n.trashed)
+    .sort((a, b) => (a.type === 'folder' ? 0 : 1) - (b.type === 'folder' ? 0 : 1) || a.name.localeCompare(b.name));
+}
+function trashedNodes() {
+  return Object.values(fs.nodes).filter((n) => n.trashed).sort((a, b) => a.name.localeCompare(b.name));
+}
+function pathOf(id) {
+  const parts = []; let n = fs.nodes[id];
+  while (n) { parts.unshift(n.name); n = n.parent ? fs.nodes[n.parent] : null; }
+  return 'C:\\' + parts.join('\\');
+}
+function allFolders() {
+  return Object.values(fs.nodes).filter((n) => n.type === 'folder' && live(n.id)).sort((a, b) => pathOf(a.id).localeCompare(pathOf(b.id)));
+}
+function uniqueName(parent, name, exceptId) {
+  const used = new Set(Object.values(fs.nodes).filter((n) => n.parent === parent && !n.trashed && n.id !== exceptId).map((n) => n.name.toLowerCase()));
+  if (!used.has(name.toLowerCase())) return name;
+  const dot = name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
+  let i = 2;
+  while (used.has((stem + ' (' + i + ')' + ext).toLowerCase())) i++;
+  return stem + ' (' + i + ')' + ext;
+}
+function removeForever(id) {
+  Object.values(fs.nodes).filter((n) => n.parent === id).forEach((n) => removeForever(n.id));
+  delete fs.nodes[id];
+}
+function restoreNode(id) {
+  const n = fs.nodes[id]; if (!n) return;
+  n.trashed = false;
+  if (!n.parent || !fs.nodes[n.parent] || !live(n.parent)) n.parent = 'root';
+  n.name = uniqueName(n.parent, n.name, n.id);
+}
+const cleanName = (s) => s.replace(/[\\/:*?"<>|]/g, '').trim();
+
+/* ---------- window manager ---------- */
+const winsEl = $('#wins'), tasksEl = $('#tasks'), screenEl = $('#screen');
+let wins = [], zTop = 10, active = null, wid = 0;
+
+const APPS = {
+  files: { title: 'My Files', icon: 'folder', w: 440, h: 340, resizable: true, mount: mountExplorer },
+  bin: { title: 'Recycle Bin', icon: 'bin', w: 420, h: 300, resizable: true, single: true, mount: (w, a) => mountExplorer(w, Object.assign({}, a, { mode: 'bin' })) },
+  calc: { title: 'Calculator', icon: 'calc', w: 268, single: true, fixed: true, mount: mountCalc },
+  notepad: { title: 'Notepad', icon: 'notepad', w: 420, h: 330, resizable: true, mount: mountNotepad },
+  paint: { title: 'Paint', icon: 'paint', w: 440, h: 470, resizable: true, mount: mountPaint },
+  mines: { title: 'Minesweeper', icon: 'mines', w: 296, single: true, fixed: true, mount: mountMines },
+  tanks: { title: 'Tanks!', icon: 'tanks', w: 640, h: 560, resizable: true, single: true, mount: mountTanks }
+};
+
+function bounds() { const r = winsEl.getBoundingClientRect(); return { w: r.width, h: r.height }; }
+
+function openApp(key, args) {
+  const app = APPS[key];
+  if (app.single) {
+    const ex = wins.find((w) => w.key === key);
+    if (ex) { focusWin(ex); return ex; }
+  }
+  const w = { id: ++wid, key: key, app: app, title: app.title, minimized: false, maximized: false, onKey: null, onClose: null };
+  const body = h('div', { class: 'wbody' });
+  const tt = h('span', { class: 'tt' }, app.title);
+  const ti = h('span', { class: 'ti', html: ICON[app.icon] });
+  const bMin = h('button', { class: 'wb', type: 'button', 'aria-label': 'Minimize', html: GLYPH.min, onclick: () => minimize(w) });
+  const bMax = app.resizable ? h('button', { class: 'wb', type: 'button', 'aria-label': 'Maximize', html: GLYPH.max, onclick: () => toggleMax(w) }) : null;
+  const bClose = h('button', { class: 'wb', type: 'button', 'aria-label': 'Close', html: GLYPH.close, onclick: () => closeWin(w) });
+  const tb = h('div', { class: 'tb' }, ti, tt, h('div', { class: 'tbtns' }, bMin, bMax, bClose));
+  const grip = h('div', { class: 'grip' });
+  const el = h('div', { class: 'win' + (app.fixed ? ' fixed' : ''), role: 'dialog', 'aria-label': app.title }, tb, body, app.resizable ? grip : null);
+  w.el = el; w.body = body; w.tt = tt;
+  w.setTitle = (t) => { w.title = t; tt.textContent = t; renderTasks(); };
+
+  const b = bounds();
+  el.style.width = Math.min(app.w, b.w) + 'px';
+  if (app.h) el.style.height = Math.min(app.h, b.h) + 'px';
+  const n = wins.length % 6;
+  wins.push(w);
+  winsEl.append(el);
+  app.mount(w, args || {});
+  el.style.left = clamp(10 + n * 26, 0, Math.max(0, b.w - el.offsetWidth)) + 'px';
+  el.style.top = clamp(8 + n * 26, 0, Math.max(0, b.h - el.offsetHeight)) + 'px';
+
+  el.addEventListener('pointerdown', () => { if (active !== w) focusWin(w); }, true);
+  tb.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.wb') || w.maximized) return;
+    tb.setPointerCapture(e.pointerId);
+    const sx = e.clientX, sy = e.clientY, ox = el.offsetLeft, oy = el.offsetTop;
+    const mv = (ev) => {
+      const bb = bounds();
+      el.style.left = clamp(ox + ev.clientX - sx, -(el.offsetWidth - 90), bb.w - 60) + 'px';
+      el.style.top = clamp(oy + ev.clientY - sy, 0, bb.h - 34) + 'px';
+    };
+    const up = () => { tb.removeEventListener('pointermove', mv); tb.removeEventListener('pointerup', up); tb.removeEventListener('pointercancel', up); };
+    tb.addEventListener('pointermove', mv); tb.addEventListener('pointerup', up); tb.addEventListener('pointercancel', up);
+  });
+  if (app.resizable) {
+    tb.addEventListener('dblclick', (e) => { if (!e.target.closest('.wb')) toggleMax(w); });
+    grip.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation(); focusWin(w);
+      grip.setPointerCapture(e.pointerId);
+      const sx = e.clientX, sy = e.clientY, ow = el.offsetWidth, oh = el.offsetHeight;
+      const mv = (ev) => {
+        const bb = bounds();
+        el.style.width = clamp(ow + ev.clientX - sx, 240, Math.max(240, bb.w - el.offsetLeft)) + 'px';
+        el.style.height = clamp(oh + ev.clientY - sy, 170, Math.max(170, bb.h - el.offsetTop)) + 'px';
+      };
+      const up = () => { grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up); };
+      grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
+    });
+  }
+  focusWin(w);
+  return w;
+}
+function focusWin(w) {
+  if (w.minimized) { w.minimized = false; w.el.hidden = false; }
+  active = w;
+  w.el.style.zIndex = ++zTop;
+  wins.forEach((x) => x.el.classList.toggle('active', x === w));
+  renderTasks();
+}
+function topVisible() {
+  return wins.filter((x) => !x.minimized).sort((a, b) => parseInt(b.el.style.zIndex || 0, 10) - parseInt(a.el.style.zIndex || 0, 10))[0] || null;
+}
+function minimize(w) {
+  w.minimized = true; w.el.hidden = true;
+  if (active === w) { const nx = topVisible(); if (nx) focusWin(nx); else { active = null; wins.forEach((x) => x.el.classList.remove('active')); renderTasks(); } }
+  else renderTasks();
+}
+function toggleMax(w) {
+  w.maximized = !w.maximized;
+  w.el.classList.toggle('max', w.maximized);
+}
+function closeWin(w) {
+  if (w.onClose) w.onClose();
+  w.el.remove();
+  wins = wins.filter((x) => x !== w);
+  if (active === w) { const nx = topVisible(); if (nx) focusWin(nx); else { active = null; renderTasks(); } }
+  else renderTasks();
+}
+function renderTasks() {
+  tasksEl.replaceChildren.apply(tasksEl, wins.map((w) => h('button', {
+    class: 'task' + (w === active && !w.minimized ? ' on' : '') + (w.minimized ? ' min' : ''),
+    type: 'button', title: w.title,
+    onclick: () => { if (w.minimized || w !== active) focusWin(w); else minimize(w); }
+  }, h('span', { class: 'tico', html: ICON[w.app.icon] }), h('span', { class: 'tlab' }, w.title))));
+}
+window.addEventListener('resize', () => {
+  const b = bounds();
+  wins.forEach((w) => {
+    if (w.maximized) return;
+    if (w.el.offsetWidth > b.w) w.el.style.width = b.w + 'px';
+    w.el.style.left = clamp(w.el.offsetLeft, -(w.el.offsetWidth - 90), Math.max(0, b.w - 60)) + 'px';
+    w.el.style.top = clamp(w.el.offsetTop, 0, Math.max(0, b.h - 34)) + 'px';
+  });
+});
+
+/* ---------- desktop icons ---------- */
+function tapOpen(node, open) {
+  let last = 0;
+  node.addEventListener('click', () => { const t = Date.now(); if (t - last < 450) { last = 0; open(); } else last = t; });
+  node.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); open(); } });
+}
+const DESK = [
+  ['files', 'My Files'], ['bin', 'Recycle Bin'], ['calc', 'Calculator'],
+  ['notepad', 'Notepad'], ['paint', 'Paint'], ['mines', 'Minesweeper'], ['tanks', 'Tanks!']
+];
+const iconsEl = $('#icons');
+DESK.forEach(([key, label]) => {
+  const b = h('button', { class: 'dicon', type: 'button', 'aria-label': label + ' (double-click to open)' },
+    h('span', { class: 'ico', html: ICON[APPS[key].icon] }), h('span', { class: 'lbl' }, label));
+  b.addEventListener('click', () => {
+    iconsEl.querySelectorAll('.dicon.sel').forEach((x) => x.classList.remove('sel'));
+    b.classList.add('sel');
+  });
+  tapOpen(b, () => openApp(key));
+  iconsEl.append(b);
+});
+
+/* ---------- start menu, clock, calendar ---------- */
+const menu = $('#menu'), startBtn = $('#start'), cal = $('#cal'), clockBtn = $('#clock');
+const ul = h('ul');
+['files', 'calc', 'notepad', 'paint', 'mines', 'tanks', 'bin'].forEach((key) => {
+  const label = key === 'files' ? 'My Files' : APPS[key].title;
+  ul.append(h('li', null, h('button', { class: 'mi', type: 'button', onclick: () => { setMenu(false); openApp(key); } },
+    h('span', { class: 'mico', html: ICON[APPS[key].icon] }), label)));
+});
+ul.append(h('li', { class: 'sep', role: 'separator' }));
+ul.append(h('li', null, h('button', { class: 'mi', type: 'button', onclick: () => { setMenu(false); askShutdown(); } },
+  h('span', { class: 'mico', html: '<svg viewBox="0 0 32 32" shape-rendering="crispEdges" aria-hidden="true"><circle cx="16" cy="17" r="10" fill="none" stroke="currentColor" stroke-width="3"/><path d="M16 3v14" stroke="currentColor" stroke-width="3"/></svg>' }), 'Shut Down...')));
+menu.append(h('div', { class: 'brand' }, h('span', null, 'RETRO 95')), ul);
+
+function setMenu(open) {
+  menu.hidden = !open;
+  startBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) setCal(false);
+}
+startBtn.addEventListener('click', () => setMenu(menu.hidden));
+
+let cy, cm;
+function renderCal() {
+  const now = new Date(), first = new Date(cy, cm, 1);
+  const days = new Date(cy, cm + 1, 0).getDate(), pad = first.getDay();
+  const grid = h('div', { class: 'calgrid' });
+  ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach((d) => grid.append(h('span', { class: 'dow' }, d)));
+  for (let i = 0; i < pad; i++) grid.append(h('span'));
+  for (let d = 1; d <= days; d++) {
+    const today = cy === now.getFullYear() && cm === now.getMonth() && d === now.getDate();
+    grid.append(h('span', { class: today ? 'today' : '' }, d));
+  }
+  cal.replaceChildren(
+    h('div', { class: 'calhead' },
+      h('button', { class: 'btn sm', type: 'button', 'aria-label': 'Previous month', onclick: () => { cm--; if (cm < 0) { cm = 11; cy--; } renderCal(); } }, '<'),
+      h('span', null, first.toLocaleDateString([], { month: 'long', year: 'numeric' })),
+      h('button', { class: 'btn sm', type: 'button', 'aria-label': 'Next month', onclick: () => { cm++; if (cm > 11) { cm = 0; cy++; } renderCal(); } }, '>')),
+    grid,
+    h('div', { class: 'calfoot' }, now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })));
+}
+function setCal(open) {
+  if (open) { const n = new Date(); cy = n.getFullYear(); cm = n.getMonth(); renderCal(); setMenu(false); }
+  cal.hidden = !open;
+}
+clockBtn.addEventListener('click', () => setCal(cal.hidden));
+let lastClock = '';
+function tick() {
+  const t = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  if (t !== lastClock) { lastClock = t; clockBtn.textContent = t; clockBtn.title = new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); }
+}
+tick(); setInterval(tick, 1000);
+
+document.addEventListener('pointerdown', (e) => {
+  if (!menu.hidden && !e.target.closest('#menu') && !e.target.closest('#start')) setMenu(false);
+  if (!cal.hidden && !e.target.closest('#cal') && !e.target.closest('#clock')) setCal(false);
+  if (!e.target.closest('.dicon')) iconsEl.querySelectorAll('.dicon.sel').forEach((x) => x.classList.remove('sel'));
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (!menu.hidden) { setMenu(false); return; }
+    if (!cal.hidden) { setCal(false); return; }
+  }
+  if (!active || !active.onKey) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (e.key === 'Enter' && e.target.closest && e.target.closest('button')) return;
+  active.onKey(e);
+});
+
+/* ---------- dialogs, shutdown, boot ---------- */
+function modal(title, msg, buttons) {
+  const veil = h('div', { class: 'veil' });
+  const close = () => veil.remove();
+  const dlg = h('div', { class: 'dlg', role: 'alertdialog', 'aria-modal': 'true' },
+    h('div', { class: 'dtb' }, title), h('div', { class: 'dmsg' }, msg),
+    h('div', { class: 'dbtns' }, buttons.map((b) => h('button', { class: 'btn', type: 'button', onclick: () => { close(); if (b.run) b.run(); } }, b.label))));
+  veil.append(dlg); screenEl.append(veil);
+  dlg.querySelector('button').focus();
+}
+function askShutdown() {
+  modal('Shut Down', 'Shut down Retro 95? Open windows will close, and anything unsaved in Notepad or Paint is lost.', [
+    { label: 'Cancel' }, { label: 'Shut Down', run: shutdown }
+  ]);
+}
+function shutdown() {
+  wins.slice().forEach(closeWin);
+  setCal(false); setMenu(false);
+  const off = h('div', { class: 'off', tabindex: '0', role: 'button', 'aria-label': 'Restart' },
+    h('div', null, h('div', null, "It's now safe to turn off"), h('div', null, 'your computer.'), h('div', { class: 'hint' }, 'Tap anywhere to restart.')));
+  const go = () => { off.remove(); boot(); };
+  off.addEventListener('click', go);
+  off.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') go(); });
+  screenEl.append(off); off.focus();
+}
+function boot() {
+  const cells = []; for (let i = 0; i < 10; i++) cells.push(h('i'));
+  const scr = h('div', { class: 'boot' }, h('div', null, h('b', null, 'RETRO 95'), h('div', null, 'Starting up...'), h('div', { class: 'bar' }, cells)));
+  screenEl.append(scr);
+  let i = 0;
+  const t = setInterval(() => {
+    if (i < cells.length) cells[i++].className = 'f';
+    else { clearInterval(t); scr.remove(); }
+  }, 140);
+}
+
+/* ---------- app: My Files / Recycle Bin ---------- */
+function twoStep(b, label, fn) {
+  let armed = false, t;
+  const reset = () => { armed = false; clearTimeout(t); b.textContent = label; };
+  b.addEventListener('click', () => {
+    if (!armed) { armed = true; b.textContent = 'Sure? Tap again'; t = setTimeout(reset, 3000); }
+    else { reset(); fn(); }
+  });
+  return b;
+}
+function mountExplorer(win, args) {
+  const bin = args.mode === 'bin';
+  let cwd = args.folder || 'root', sel = null, renaming = null;
+  const grid = h('div', { class: 'filegrid' });
+  const pathEl = h('div', { class: 'pathbar' });
+  const stL = h('span'), stR = h('span');
+  const btn = (label, fn) => h('button', { class: 'btn', type: 'button', onclick: fn }, label);
+  const toolbar = h('div', { class: 'toolbar' });
+  let bUp, bOpen, bRen, bDel, bRestore, bForever, bEmpty;
+
+  function openNode(id) {
+    const n = fs.nodes[id]; if (!n || bin) return;
+    if (n.type === 'folder') { cwd = id; sel = null; render(); }
+    else if (n.type === 'text') openApp('notepad', { fileId: id });
+    else openApp('paint', { fileId: id });
+  }
+  function create(type) {
+    const n = { id: newId(), name: uniqueName(cwd, type === 'folder' ? 'New Folder' : 'New Text.txt'), type: type, parent: cwd };
+    if (type === 'text') n.content = '';
+    fs.nodes[n.id] = n; sel = n.id; renaming = n.id; fsChanged();
+  }
+  function commitRename(id, val) {
+    if (renaming !== id) return;
+    renaming = null;
+    const n = fs.nodes[id]; val = cleanName(val);
+    if (n && val && val !== n.name) { n.name = uniqueName(n.parent, val, id); fsChanged(); } else render();
+  }
+  function trash() {
+    const n = fs.nodes[sel]; if (!n) return;
+    n.trashed = true; sel = null; fsChanged();
+  }
+  if (bin) {
+    bRestore = btn('Restore', () => { if (sel) { restoreNode(sel); sel = null; fsChanged(); } });
+    bForever = twoStep(btn('Delete Forever', () => {}), 'Delete Forever', () => { if (sel) { removeForever(sel); sel = null; fsChanged(); } });
+    bEmpty = twoStep(btn('Empty Bin', () => {}), 'Empty Bin', () => { trashedNodes().forEach((n) => removeForever(n.id)); sel = null; fsChanged(); });
+    toolbar.append(bRestore, bForever, bEmpty);
+  } else {
+    bUp = btn('Up', () => { const n = fs.nodes[cwd]; if (n && n.parent) { cwd = n.parent; sel = null; render(); } });
+    bOpen = btn('Open', () => { if (sel) openNode(sel); });
+    bRen = btn('Rename', () => { if (sel) { renaming = sel; render(); } });
+    bDel = btn('Delete', trash);
+    toolbar.append(bUp, btn('New Folder', () => create('folder')), btn('New Text', () => create('text')), bOpen, bRen, bDel);
+  }
+
+  function refreshButtons() {
+    const list = bin ? trashedNodes() : children(cwd);
+    if (bin) {
+      bRestore.disabled = !sel; bForever.disabled = !sel; bEmpty.disabled = !list.length;
+    } else {
+      bUp.disabled = cwd === 'root'; bOpen.disabled = !sel; bRen.disabled = !sel; bDel.disabled = !sel;
+    }
+    const n = sel && fs.nodes[sel];
+    stR.textContent = n ? n.name : (bin ? 'Select an item to restore it' : '');
+  }
+  function select(id, item) {
+    if (renaming) return;
+    sel = id;
+    grid.querySelectorAll('.fitem.sel').forEach((x) => x.classList.remove('sel'));
+    item.classList.add('sel');
+    refreshButtons();
+  }
+  function render() {
+    if (!bin && (!fs.nodes[cwd] || !live(cwd))) cwd = 'root';
+    const list = bin ? trashedNodes() : children(cwd);
+    if (sel && !list.some((n) => n.id === sel)) sel = null;
+    win.setTitle(bin ? 'Recycle Bin' : fs.nodes[cwd].name);
+    pathEl.textContent = bin ? 'C:\\Recycle Bin' : pathOf(cwd);
+    grid.replaceChildren();
+    list.forEach((n) => {
+      let label;
+      if (renaming === n.id) {
+        label = h('input', { class: 'inp rn', type: 'text', value: n.name, maxlength: '60', 'aria-label': 'New name',
+          onkeydown: (e) => { e.stopPropagation(); if (e.key === 'Enter') commitRename(n.id, e.target.value); else if (e.key === 'Escape') { renaming = null; render(); } },
+          onblur: (e) => commitRename(n.id, e.target.value) });
+      } else label = h('span', { class: 'flabel' }, n.name);
+      const item = h('div', { class: 'fitem' + (sel === n.id ? ' sel' : ''), role: 'button', tabindex: '0', title: n.name },
+        h('span', { class: 'ficon', html: ICON[n.type === 'folder' ? 'folder' : n.type === 'image' ? 'image' : 'file'] }), label);
+      item.addEventListener('click', () => select(n.id, item));
+      if (renaming !== n.id) tapOpen(item, () => openNode(n.id));
+      grid.append(item);
+    });
+    if (!list.length) grid.append(h('div', { class: 'empty' }, bin ? 'The Recycle Bin is empty.' : 'This folder is empty.'));
+    stL.textContent = list.length + (list.length === 1 ? ' item' : ' items');
+    refreshButtons();
+    const rn = grid.querySelector('.rn');
+    if (rn) { rn.focus(); rn.select(); }
+  }
+  win.body.append(toolbar, pathEl, grid, h('div', { class: 'statusbar' }, stL, stR));
+  win.body.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'Delete' && !bin && sel) trash();
+    else if (e.key === 'F2' && !bin && sel) { renaming = sel; render(); }
+    else if (e.key === 'Backspace' && !bin && cwd !== 'root') { e.preventDefault(); bUp.click(); }
+  });
+  fsListeners.add(render);
+  win.onClose = () => fsListeners.delete(render);
+  render();
+}
+
+/* ---------- app: Notepad ---------- */
+function mountNotepad(win, args) {
+  let fileId = args.fileId && fs.nodes[args.fileId] ? args.fileId : null, dirty = false;
+  const ta = h('textarea', { class: 'npad', id: 'np-text-' + win.id, 'aria-label': 'Document text', spellcheck: 'false', autocapitalize: 'off' });
+  if (fileId) ta.value = fs.nodes[fileId].content || '';
+  const strip = h('div', { class: 'strip', hidden: true });
+  const stL = h('span'), stR = h('span');
+  function showStrip(list) {
+    strip.className = 'strip' + (list ? ' list' : '');
+    strip.hidden = false;
+    strip.replaceChildren.apply(strip, [].concat.apply([], [].slice.call(arguments, 1)));
+  }
+  const hideStrip = () => { strip.hidden = true; strip.replaceChildren(); };
+  function title() {
+    const n = fileId && fs.nodes[fileId];
+    win.setTitle((n ? n.name : 'Untitled') + (dirty ? '*' : '') + ' - Notepad');
+  }
+  function pos() {
+    const upto = ta.value.slice(0, ta.selectionStart);
+    stL.textContent = 'Ln ' + (upto.split('\n').length) + ', Col ' + (upto.length - upto.lastIndexOf('\n'));
+  }
+  function reset() { fileId = null; dirty = false; ta.value = ''; hideStrip(); title(); pos(); stR.textContent = ''; ta.focus(); }
+  function doNew() {
+    if (!dirty) { reset(); return; }
+    showStrip(false, h('span', null, 'Discard unsaved changes?'),
+      h('button', { class: 'btn sm', type: 'button', onclick: reset }, 'Discard'),
+      h('button', { class: 'btn sm', type: 'button', onclick: hideStrip }, 'Cancel'));
+  }
+  function doOpen() {
+    const files = Object.values(fs.nodes).filter((n) => n.type === 'text' && live(n.id)).sort((a, b) => pathOf(a.id).localeCompare(pathOf(b.id)));
+    const items = files.length ? files.map((n) => h('button', { class: 'btn sm', type: 'button', onclick: () => {
+      fileId = n.id; ta.value = n.content || ''; dirty = false; hideStrip(); title(); pos(); stR.textContent = '';
+    } }, pathOf(n.id).replace('C:\\My Files\\', ''))) : [h('span', null, 'There are no text files yet.')];
+    showStrip(true, h('span', null, 'Open:'), items, h('button', { class: 'btn sm', type: 'button', onclick: hideStrip }, 'Cancel'));
+  }
+  function save() {
+    if (fileId && fs.nodes[fileId]) {
+      fs.nodes[fileId].content = ta.value; dirty = false;
+      const ok = fsChanged(); title();
+      stR.textContent = ok ? 'Saved' : 'Storage full: could not save';
+    } else saveAs();
+  }
+  function saveAs() {
+    const nameIn = h('input', { class: 'inp', id: 'np-name-' + win.id, type: 'text', value: 'untitled.txt', maxlength: '60', 'aria-label': 'File name' });
+    const folderSel = h('select', { class: 'inp', id: 'np-folder-' + win.id, 'aria-label': 'Folder' },
+      allFolders().map((f) => h('option', { value: f.id }, pathOf(f.id))));
+    folderSel.value = fs.nodes.docs && live('docs') ? 'docs' : 'root';
+    const doSave = () => {
+      let nm = cleanName(nameIn.value) || 'untitled.txt';
+      if (!/\.[^.]+$/.test(nm)) nm += '.txt';
+      const parent = folderSel.value;
+      const n = { id: newId(), name: uniqueName(parent, nm), type: 'text', parent: parent, content: ta.value };
+      fs.nodes[n.id] = n; fileId = n.id; dirty = false;
+      const ok = fsChanged(); hideStrip(); title();
+      stR.textContent = ok ? 'Saved' : 'Storage full: could not save';
+    };
+    nameIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
+    showStrip(false, h('span', null, 'Save as:'), nameIn, folderSel,
+      h('button', { class: 'btn sm', type: 'button', onclick: doSave }, 'Save'),
+      h('button', { class: 'btn sm', type: 'button', onclick: hideStrip }, 'Cancel'));
+    nameIn.focus(); nameIn.select();
+  }
+  const wrapB = h('button', { class: 'btn on', type: 'button', 'aria-pressed': 'true', onclick: () => {
+    const on = wrapB.getAttribute('aria-pressed') !== 'true';
+    wrapB.setAttribute('aria-pressed', on ? 'true' : 'false');
+    ta.classList.toggle('nowrap', !on);
+    ta.setAttribute('wrap', on ? 'soft' : 'off');
+  } }, 'Wrap');
+  const toolbar = h('div', { class: 'toolbar' },
+    h('button', { class: 'btn', type: 'button', onclick: doNew }, 'New'),
+    h('button', { class: 'btn', type: 'button', onclick: doOpen }, 'Open'),
+    h('button', { class: 'btn', type: 'button', onclick: save }, 'Save'),
+    h('button', { class: 'btn', type: 'button', onclick: saveAs }, 'Save As'),
+    wrapB);
+  ta.addEventListener('input', () => { if (!dirty) { dirty = true; title(); } pos(); });
+  ['keyup', 'click', 'select'].forEach((ev) => ta.addEventListener(ev, pos));
+  ta.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); } });
+  win.body.append(toolbar, strip, ta, h('div', { class: 'statusbar' }, stL, stR));
+  const onFs = () => { if (fileId && !fs.nodes[fileId]) fileId = null; title(); };
+  fsListeners.add(onFs);
+  win.onClose = () => fsListeners.delete(onFs);
+  title(); pos();
+  if (window.matchMedia('(pointer: fine)').matches) ta.focus();
+}
+
+/* ---------- app: Calculator ---------- */
+function mountCalc(win) {
+  let cur = '0', acc = null, op = null, fresh = true, lastOp = null, lastVal = null, err = false, hist = '';
+  const SYM = { '+': '+', '-': '\u2212', '*': '\u00d7', '/': '\u00f7' };
+  const num = h('div', { class: 'num' }), histEl = h('div', { class: 'hist' });
+  const fmtN = (x) => String(parseFloat(x.toPrecision(12)));
+  function show() {
+    num.textContent = cur; histEl.textContent = hist;
+    num.style.fontSize = err ? '22px' : cur.length > 13 ? '26px' : cur.length > 10 ? '32px' : '42px';
+  }
+  function clearAll() { cur = '0'; acc = null; op = null; fresh = true; lastOp = null; lastVal = null; err = false; hist = ''; }
+  function fail(msg) { err = true; cur = msg || 'Cannot divide by zero'; hist = ''; show(); }
+  function compute(a, o, b) {
+    if (o === '+') return a + b;
+    if (o === '-') return a - b;
+    if (o === '*') return a * b;
+    if (b === 0) return null;
+    return a / b;
+  }
+  function input(k) {
+    if (err) { clearAll(); if (k === 'C' || k === 'CE' || k === 'back') { show(); return; } }
+    if (/^[0-9]$/.test(k)) {
+      if (fresh) { cur = k; fresh = false; } else if (cur.replace(/[-.]/g, '').length < 15) cur = cur === '0' ? k : cur + k;
+    } else if (k === '.') {
+      if (fresh) { cur = '0.'; fresh = false; } else if (cur.indexOf('.') < 0) cur += '.';
+    } else if (k === '+' || k === '-' || k === '*' || k === '/') {
+      const v = parseFloat(cur);
+      if (op !== null && !fresh) {
+        const r = compute(acc, op, v);
+        if (r === null) { fail(); return; }
+        acc = r; cur = fmtN(r);
+      } else if (op === null) acc = v;
+      op = k; fresh = true; lastOp = null; hist = fmtN(acc) + ' ' + SYM[op];
+    } else if (k === '=') {
+      let a, o, b;
+      if (op !== null) { a = acc; o = op; b = parseFloat(cur); }
+      else if (lastOp) { a = parseFloat(cur); o = lastOp; b = lastVal; }
+      else return;
+      const r = compute(a, o, b);
+      if (r === null) { fail(); return; }
+      hist = fmtN(a) + ' ' + SYM[o] + ' ' + fmtN(b) + ' =';
+      lastOp = o; lastVal = b; op = null; acc = null; cur = fmtN(r); fresh = true;
+    } else if (k === 'C') clearAll();
+    else if (k === 'CE') { cur = '0'; fresh = true; }
+    else if (k === 'back') {
+      if (!fresh) cur = (cur.length > 1 && !(cur.length === 2 && cur[0] === '-')) ? cur.slice(0, -1) : '0';
+    } else if (k === 'neg') {
+      if (cur !== '0') cur = cur[0] === '-' ? cur.slice(1) : '-' + cur;
+    } else if (k === 'sqrt') {
+      const v = parseFloat(cur);
+      if (v < 0) { fail('Invalid input'); return; }
+      hist = '\u221a(' + fmtN(v) + ')'; cur = fmtN(Math.sqrt(v)); fresh = true;
+    } else if (k === 'sq') {
+      const v = parseFloat(cur); hist = 'sqr(' + fmtN(v) + ')'; cur = fmtN(v * v); fresh = true;
+    } else if (k === 'inv') {
+      const v = parseFloat(cur);
+      if (v === 0) { fail(); return; }
+      hist = '1/(' + fmtN(v) + ')'; cur = fmtN(1 / v); fresh = true;
+    } else if (k === 'pct') {
+      const v = parseFloat(cur);
+      cur = op !== null ? fmtN(acc * v / 100) : '0'; fresh = true;
+    }
+    show();
+  }
+  const rows = [
+    [['pct', '%'], ['sqrt', '\u221a'], ['sq', 'x\u00b2'], ['inv', '1/x']],
+    [['CE', 'CE'], ['C', 'C'], ['back', 'DEL'], ['/', '\u00f7', 'op']],
+    [['7', '7'], ['8', '8'], ['9', '9'], ['*', '\u00d7', 'op']],
+    [['4', '4'], ['5', '5'], ['6', '6'], ['-', '\u2212', 'op']],
+    [['1', '1'], ['2', '2'], ['3', '3'], ['+', '+', 'op']],
+    [['neg', '\u00b1'], ['0', '0'], ['.', '.'], ['=', '=', 'eq']]
+  ];
+  const keys = h('div', { class: 'keys' });
+  rows.forEach((row) => row.forEach(([k, label, cls]) => {
+    keys.append(h('button', { class: 'btn key' + (cls ? ' ' + cls : ''), type: 'button', 'aria-label': label,
+      onpointerdown: (e) => e.preventDefault(), onclick: () => input(k) }, label));
+  }));
+  win.body.append(h('div', { class: 'calc' }, h('div', { class: 'scr', 'aria-live': 'polite' }, histEl, num), keys));
+  win.onKey = (e) => {
+    const k = e.key;
+    if (/^[0-9]$/.test(k)) input(k);
+    else if (k === '.' || k === ',') input('.');
+    else if (k === '+' || k === '-' || k === '*' || k === '/') input(k);
+    else if (k === 'Enter' || k === '=') input('=');
+    else if (k === 'Backspace') input('back');
+    else if (k === 'Escape') input('C');
+    else if (k === 'Delete') input('CE');
+    else if (k === '%') input('pct');
+    else return;
+    e.preventDefault();
+  };
+  show();
+}
+
+/* ---------- app: Paint ---------- */
+function mountPaint(win, args) {
+  const W = 320, H = 240;
+  let tool = 'pencil', color = '#000000', size = 3;
+  let fileId = args.fileId && fs.nodes[args.fileId] ? args.fileId : null;
+  const undo = [];
+  const canvas = h('canvas', { class: 'pcanvas', width: W, height: H, 'aria-label': 'Drawing canvas' });
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+  if (fileId && fs.nodes[fileId].content) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, W, H);
+    img.src = fs.nodes[fileId].content;
+  }
+  const strip = h('div', { class: 'strip', hidden: true });
+  const stL = h('span', null, 'Pencil, size 3'), stR = h('span');
+  const status = () => { stL.textContent = { pencil: 'Pencil', eraser: 'Eraser', line: 'Line', rect: 'Box', fill: 'Fill' }[tool] + (tool === 'fill' ? '' : ', size ' + size); };
+  const title = () => win.setTitle((fileId && fs.nodes[fileId] ? fs.nodes[fileId].name : 'Untitled') + ' - Paint');
+
+  const toolBtns = {};
+  const toolRow = h('div', { class: 'toolbar' });
+  [['pencil', 'Pencil'], ['eraser', 'Eraser'], ['line', 'Line'], ['rect', 'Box'], ['fill', 'Fill']].forEach(([k, label]) => {
+    const b = h('button', { class: 'btn', type: 'button', 'aria-pressed': k === tool ? 'true' : 'false', onclick: () => {
+      tool = k; Object.keys(toolBtns).forEach((x) => toolBtns[x].setAttribute('aria-pressed', x === k ? 'true' : 'false')); status();
+    } }, label);
+    toolBtns[k] = b; toolRow.append(b);
+  });
+  const sizeBtns = {};
+  const optRow = h('div', { class: 'toolbar' });
+  [1, 3, 6].forEach((s) => {
+    const b = h('button', { class: 'btn', type: 'button', 'aria-label': 'Size ' + s, 'aria-pressed': s === size ? 'true' : 'false', onclick: () => {
+      size = s; Object.keys(sizeBtns).forEach((x) => sizeBtns[x].setAttribute('aria-pressed', Number(x) === s ? 'true' : 'false')); status();
+    } }, String(s));
+    sizeBtns[s] = b; optRow.append(b);
+  });
+  function pushUndo() { undo.push(ctx.getImageData(0, 0, W, H)); if (undo.length > 15) undo.shift(); }
+  optRow.append(
+    h('button', { class: 'btn', type: 'button', onclick: () => { const s = undo.pop(); if (s) ctx.putImageData(s, 0, 0); } }, 'Undo'),
+    h('button', { class: 'btn', type: 'button', onclick: () => { pushUndo(); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H); } }, 'Clear'),
+    h('button', { class: 'btn', type: 'button', onclick: save }, 'Save'));
+
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
+  }
+  function stroke() {
+    ctx.lineWidth = tool === 'eraser' ? size * 4 : size;
+    ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : color;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  }
+  function seg(a, b) { stroke(); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x + 0.01, b.y); ctx.stroke(); }
+  function shape(a, b) {
+    stroke();
+    if (tool === 'line') { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+    else ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  }
+  function flood(px, py, hex) {
+    const img = ctx.getImageData(0, 0, W, H), d = img.data;
+    const x0 = clamp(Math.floor(px), 0, W - 1), y0 = clamp(Math.floor(py), 0, H - 1);
+    const i0 = (y0 * W + x0) * 4, tr = d[i0], tg = d[i0 + 1], tb = d[i0 + 2];
+    const fr = parseInt(hex.slice(1, 3), 16), fg = parseInt(hex.slice(3, 5), 16), fb = parseInt(hex.slice(5, 7), 16);
+    const seen = new Uint8Array(W * H), stack = [y0 * W + x0];
+    while (stack.length) {
+      const p = stack.pop();
+      if (seen[p]) continue;
+      seen[p] = 1;
+      const i = p * 4;
+      if (Math.abs(d[i] - tr) + Math.abs(d[i + 1] - tg) + Math.abs(d[i + 2] - tb) > 60) continue;
+      d[i] = fr; d[i + 1] = fg; d[i + 2] = fb; d[i + 3] = 255;
+      const x = p % W, y = (p / W) | 0;
+      if (x > 0) stack.push(p - 1);
+      if (x < W - 1) stack.push(p + 1);
+      if (y > 0) stack.push(p - W);
+      if (y < H - 1) stack.push(p + W);
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  let drawing = false, start = null, last = null, snap = null;
+  canvas.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); canvas.setPointerCapture(e.pointerId);
+    const p = pos(e); pushUndo();
+    if (tool === 'fill') { flood(p.x, p.y, color); return; }
+    drawing = true; start = last = p;
+    if (tool === 'line' || tool === 'rect') snap = ctx.getImageData(0, 0, W, H);
+    else seg(p, p);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!drawing) return;
+    const p = pos(e);
+    if (tool === 'pencil' || tool === 'eraser') { seg(last, p); last = p; }
+    else { ctx.putImageData(snap, 0, 0); shape(start, p); }
+  });
+  const end = () => { drawing = false; snap = null; };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+
+  function save() {
+    if (fileId && fs.nodes[fileId]) {
+      fs.nodes[fileId].content = canvas.toDataURL('image/png');
+      stR.textContent = fsChanged() ? 'Saved' : 'Storage full: could not save';
+      return;
+    }
+    const nameIn = h('input', { class: 'inp', id: 'pt-name-' + win.id, type: 'text', value: 'drawing.png', maxlength: '60', 'aria-label': 'File name' });
+    const folderSel = h('select', { class: 'inp', id: 'pt-folder-' + win.id, 'aria-label': 'Folder' },
+      allFolders().map((f) => h('option', { value: f.id }, pathOf(f.id))));
+    folderSel.value = fs.nodes.pics && live('pics') ? 'pics' : 'root';
+    const doSave = () => {
+      let nm = cleanName(nameIn.value) || 'drawing.png';
+      if (!/\.png$/i.test(nm)) nm += '.png';
+      const parent = folderSel.value;
+      const n = { id: newId(), name: uniqueName(parent, nm), type: 'image', parent: parent, content: canvas.toDataURL('image/png') };
+      fs.nodes[n.id] = n; fileId = n.id;
+      const ok = fsChanged(); strip.hidden = true; strip.replaceChildren(); title();
+      stR.textContent = ok ? 'Saved' : 'Storage full: could not save';
+    };
+    nameIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSave(); });
+    strip.hidden = false;
+    strip.replaceChildren(h('span', null, 'Save as:'), nameIn, folderSel,
+      h('button', { class: 'btn sm', type: 'button', onclick: doSave }, 'Save'),
+      h('button', { class: 'btn sm', type: 'button', onclick: () => { strip.hidden = true; strip.replaceChildren(); } }, 'Cancel'));
+    nameIn.focus(); nameIn.select();
+  }
+
+  const COLORS = ['#000000', '#808080', '#800000', '#808000', '#008000', '#008080', '#000080', '#800080',
+    '#ffffff', '#c0c0c0', '#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff'];
+  const pal = h('div', { class: 'pal', role: 'group', 'aria-label': 'Colors' });
+  const sws = [];
+  COLORS.forEach((c) => {
+    const b = h('button', { class: 'sw', type: 'button', 'aria-label': 'Color ' + c, 'aria-pressed': c === color ? 'true' : 'false', style: 'background:' + c, onclick: () => {
+      color = c; sws.forEach((x) => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    } });
+    sws.push(b); pal.append(b);
+  });
+  win.body.append(toolRow, optRow, strip, h('div', { class: 'pstage' }, canvas), pal, h('div', { class: 'statusbar' }, stL, stR));
+  title(); status();
+}
+
+/* ---------- app: Minesweeper ---------- */
+function mountMines(win) {
+  const R = 9, C = 9, M = 10, N = R * C;
+  let mine, adj, st, over, won, started, left, secs, tmr, boom, flagMode = false, suppress = false, lastType = 'mouse';
+  const lcdL = h('div', { class: 'lcd', 'aria-label': 'Mines left' }), lcdR = h('div', { class: 'lcd', 'aria-label': 'Seconds' });
+  const face = h('button', { class: 'btn face', type: 'button', 'aria-label': 'New game', onclick: reset });
+  const grid = h('div', { class: 'mgrid' });
+  const cells = [];
+  const fmt = (n) => n < 0 ? '-' + String(Math.min(99, -n)).padStart(2, '0') : String(Math.min(999, n)).padStart(3, '0');
+  function nbrs(i) {
+    const r = (i / C) | 0, c = i % C, out = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (!dr && !dc) continue;
+      const rr = r + dr, cc = c + dc;
+      if (rr >= 0 && rr < R && cc >= 0 && cc < C) out.push(rr * C + cc);
+    }
+    return out;
+  }
+  function paint() {
+    cells.forEach((b, i) => {
+      let cls = 'cell', html = '', label = 'Hidden cell';
+      if (st[i] === 1) { cls += ' open'; label = 'Open'; if (adj[i] > 0) { cls += ' n' + adj[i]; html = String(adj[i]); label = adj[i] + ' nearby'; } }
+      else if (st[i] === 2) { html = FLAG; label = 'Flag'; }
+      if (over) {
+        if (mine[i] && st[i] !== 2) { cls += ' open'; html = MINE; label = 'Mine'; if (i === boom) cls += ' boom'; }
+        else if (!mine[i] && st[i] === 2) { cls += ' open'; html = WRONG; label = 'Wrong flag'; }
+      }
+      b.className = cls; b.innerHTML = html; b.setAttribute('aria-label', label);
+    });
+    lcdL.textContent = fmt(left); lcdR.textContent = fmt(secs);
+    face.textContent = over ? (won ? 'B)' : 'X(') : ':)';
+  }
+  function reset() {
+    clearInterval(tmr);
+    mine = new Array(N).fill(false); adj = new Array(N).fill(0); st = new Array(N).fill(0);
+    over = won = started = false; left = M; secs = 0; boom = -1;
+    paint();
+  }
+  function place(safe) {
+    const block = new Set([safe].concat(nbrs(safe)));
+    let n = 0;
+    while (n < M) { const i = Math.floor(Math.random() * N); if (!mine[i] && !block.has(i)) { mine[i] = true; n++; } }
+    for (let i = 0; i < N; i++) adj[i] = nbrs(i).filter((j) => mine[j]).length;
+  }
+  function lose(i) { over = true; boom = i; clearInterval(tmr); }
+  function checkWin() {
+    if (st.filter((s) => s === 1).length === N - M) {
+      over = won = true; clearInterval(tmr);
+      for (let i = 0; i < N; i++) if (mine[i]) st[i] = 2;
+      left = 0;
+    }
+  }
+  function reveal(i) {
+    if (st[i] !== 0) return;
+    if (!started) {
+      started = true; place(i);
+      tmr = setInterval(() => { secs = Math.min(999, secs + 1); lcdR.textContent = fmt(secs); }, 1000);
+    }
+    if (mine[i]) { lose(i); return; }
+    const stack = [i];
+    while (stack.length) {
+      const p = stack.pop();
+      if (st[p] !== 0) continue;
+      st[p] = 1;
+      if (adj[p] === 0) nbrs(p).forEach((q) => { if (st[q] === 0) stack.push(q); });
+    }
+    checkWin();
+  }
+  function flag(i) {
+    if (st[i] === 1) return;
+    if (st[i] === 0) { st[i] = 2; left--; } else { st[i] = 0; left++; }
+  }
+  function chord(i) {
+    if (adj[i] === 0) return;
+    const ns = nbrs(i);
+    if (ns.filter((q) => st[q] === 2).length !== adj[i]) return;
+    ns.forEach((q) => { if (!over && st[q] === 0) reveal(q); });
+  }
+  for (let i = 0; i < N; i++) {
+    let hold = null;
+    const b = h('button', { class: 'cell', type: 'button', 'aria-label': 'Hidden cell' });
+    b.addEventListener('pointerdown', (e) => {
+      lastType = e.pointerType;
+      if (e.pointerType !== 'mouse') hold = setTimeout(() => { if (!over) { suppress = true; flag(i); paint(); } }, 420);
+    });
+    const stop = () => { clearTimeout(hold); setTimeout(() => { suppress = false; }, 60); };
+    b.addEventListener('pointerup', stop); b.addEventListener('pointerleave', () => clearTimeout(hold)); b.addEventListener('pointercancel', stop);
+    b.addEventListener('click', () => {
+      if (over || suppress) return;
+      if (flagMode) flag(i); else if (st[i] === 1) chord(i); else if (st[i] === 0) reveal(i);
+      paint();
+    });
+    b.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (lastType === 'mouse' && !over) { flag(i); paint(); }
+    });
+    cells.push(b); grid.append(b);
+  }
+  const flagB = h('button', { class: 'btn', type: 'button', 'aria-pressed': 'false', onclick: () => {
+    flagMode = !flagMode; flagB.setAttribute('aria-pressed', flagMode ? 'true' : 'false');
+  } }, 'Flag mode');
+  win.body.append(h('div', { class: 'mines' },
+    h('div', { class: 'mhead' }, lcdL, face, lcdR), grid,
+    h('div', { class: 'mfoot' }, flagB, h('span', null, 'Or long-press / right-click a square to flag it.'))));
+  win.onClose = () => clearInterval(tmr);
+  reset();
+}
+
+/* ---------- app: Tanks! (the supplied game, wrapped in a window) ---------- */
+function mountTanks(win) {
+  const cv = h('canvas', { class: 'tcanvas', width: 800, height: 600, 'aria-label': 'Tanks game' });
+  const ctx = cv.getContext('2d');
+  const W = 800, H = 560, OY = 40, T = 40, C = 20, RW = 14, R = 14;
+  let g, player, enemies = [], bullets = [], mines = [], fx = [], wrecks = [], coinsArr = [];
+  let state = 'title', mission = 1, lives = 3, kills = 0, timer = 0, bonus = false, keys = {}, mx = 400, my = 200, rawX = 0, rawY = 0;
+  let coins = 0, coinsStart = 0, shield = 0, gained = 0;
+  let ups = { bounce: 0, ammo: 0, bspeed: 0, speed: 0, explosive: 0 };
+  const TYPES = [
+    { sp: 0, bs: 3, bn: 1, cd: 110, mb: 1, ml: 0 },
+    { sp: 1, bs: 3, bn: 1, cd: 90, mb: 1, ml: 0 },
+    { sp: 1.1, bs: 5, bn: 1, cd: 80, mb: 2, ml: 0 },
+    { sp: 1.6, bs: 3.5, bn: 1, cd: 90, mb: 2, ml: 1 },
+    { sp: 1.2, bs: 4, bn: 2, cd: 45, mb: 3, ml: 0 },
+    { sp: 1.4, bs: 5, bn: 2, cd: 30, mb: 4, ml: 0 }];
+  const ITEMS = [
+    { k: 'shield', n: 'Shield', d: 'Absorbs one hit (stacks to 3)', max: 3, base: 25, flat: 1 },
+    { k: 'life', n: 'Extra life', d: '+1 life (max 9)', max: 9, base: 60, flat: 1 },
+    { k: 'bounce', n: 'Extra bounce', d: 'Your shells bounce one more time', max: 3, base: 30 },
+    { k: 'explosive', n: 'Explosive shell', d: 'Shells blow up on impact (hurts enemies only)', max: 1, base: 80 },
+    { k: 'ammo', n: 'Extra ammo', d: '+1 shell on screen at once', max: 3, base: 30 },
+    { k: 'bspeed', n: 'Fast shells', d: 'Shells fly 25% faster', max: 2, base: 25 },
+    { k: 'speed', n: 'Engine', d: 'Tank moves 10% faster', max: 3, base: 25 }];
+  function lvl(it) { return it.k === 'shield' ? shield : it.k === 'life' ? lives : ups[it.k]; }
+  function cost(it) { return it.flat ? it.base : it.base * (ups[it.k] + 1); }
+  function canBuy(it) { return coins >= cost(it) && lvl(it) < it.max; }
+  function buy(i) {
+    const it = ITEMS[i]; if (!it || !canBuy(it)) return; coins -= cost(it);
+    if (it.k === 'shield') shield++; else if (it.k === 'life') lives++; else ups[it.k]++;
+  }
+  function mul(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function wallAt(x, y) { return x < 0 || y < 0 || x >= W || y >= H || g[y / T | 0][x / T | 0] === 1; }
+  function hit(x, y, r) {
+    if (x < r || y < r || x > W - r || y > H - r) return true;
+    for (let cy = Math.floor((y - r) / T); cy <= Math.floor((y + r) / T); cy++) for (let cx = Math.floor((x - r) / T); cx <= Math.floor((x + r) / T); cx++) {
+      if (cx < C && cy < RW && g[cy][cx]) { const px = Math.max(cx * T, Math.min(x, cx * T + T)), py = Math.max(cy * T, Math.min(y, cy * T + T)); if ((x - px) ** 2 + (y - py) ** 2 < r * r) return true; }
+    }
+    return false;
+  }
+  function alive() { return [player].concat(enemies).filter((t) => !t.dead); }
+  function tankHit(o, x, y) { return alive().some((t) => t !== o && (t.x - x) ** 2 + (t.y - y) ** 2 < (2 * R) ** 2); }
+  function mv(o, dx, dy) { if (!hit(o.x + dx, o.y, R) && !tankHit(o, o.x + dx, o.y)) o.x += dx; if (!hit(o.x, o.y + dy, R) && !tankHit(o, o.x, o.y + dy)) o.y += dy; }
+  function angDiff(a, b) { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; }
+  function los(a, b) { const d = Math.hypot(b.x - a.x, b.y - a.y), n = d / 8 | 0; for (let i = 1; i < n; i++) { if (wallAt(a.x + (b.x - a.x) * i / n, a.y + (b.y - a.y) * i / n)) return false; } return true; }
+  function build() {
+    const r = mul(mission * 7919 + 13);
+    g = Array.from({ length: RW }, () => Array(C).fill(0));
+    const n = Math.min(8 + mission * 1.5, 34) | 0;
+    for (let i = 0; i < n; i++) {
+      const len = 1 + (r() * 3 | 0), hz = r() < .5, x = r() * C | 0, y = r() * RW | 0;
+      for (let k = 0; k < len; k++) {
+        const cx = x + (hz ? k : 0), cy = y + (hz ? 0 : k);
+        if (cx < C && cy < RW && (Math.abs(cx - 2) > 2 || Math.abs(cy - 12) > 2)) g[cy][cx] = 1;
+      }
+    }
+    player = { x: 100, y: 500, t: -.8, ba: 0, dead: false, p: 1, inv: 0 };
+    enemies = []; bullets = []; mines = []; fx = []; wrecks = []; coinsArr = [];
+    const cnt = Math.min(2 + (mission * .9 | 0), 9), maxT = Math.min(5, mission / 2 | 0);
+    for (let i = 0; i < cnt; i++) {
+      for (let a = 0; a < 300; a++) {
+        const x = r() * W, y = r() * H;
+        if (hit(x, y, R + 4) || Math.hypot(x - player.x, y - player.y) < 320 || enemies.some((e) => Math.hypot(e.x - x, e.y - y) < 80)) continue;
+        enemies.push({ x: x, y: y, t: Math.PI, ba: 0, type: r() * (maxT + 1) | 0, dead: false, cd: 60 + r() * 60 | 0, mt: 0, h: 0, mc: 300 }); break;
+      }
+    }
+  }
+  function startMission() { coinsStart = coins; build(); state = 'intro'; timer = 150; }
+  function boom(x, y, s) { fx.push({ x: x, y: y, r: 4, max: s }); }
+  function kill(t) {
+    if (t.dead) return; t.dead = true; boom(t.x, t.y, 40); wrecks.push({ x: t.x, y: t.y });
+    if (t.p) { state = 'dead'; timer = 90; } else { kills++; coinsArr.push({ x: t.x, y: t.y, v: 4 + t.type * 2 }); }
+  }
+  function hurt() {
+    if (player.dead || player.inv > 0) return;
+    if (shield > 0) { shield--; player.inv = 60; boom(player.x, player.y, 34); } else kill(player);
+  }
+  function explode(b) {
+    if (b.o === player && ups.explosive) { boom(b.x, b.y, 45); enemies.forEach((e) => { if (!e.dead && Math.hypot(e.x - b.x, e.y - b.y) < 45) kill(e); }); }
+  }
+  function shoot(o, sp, bn, mb) {
+    if (bullets.filter((b) => b.o === o).length >= mb) return false;
+    bullets.push({ x: o.x + Math.cos(o.t) * 26, y: o.y + Math.sin(o.t) * 26, vx: Math.cos(o.t) * sp, vy: Math.sin(o.t) * sp, n: 0, max: bn, o: o, age: 0 }); return true;
+  }
+  function ai(e) {
+    if (e.dead) return; const ty = TYPES[e.type], p = player;
+    e.cd--; e.mt--;
+    const want = Math.atan2(p.y - e.y, p.x - e.x);
+    e.t += Math.max(-.035, Math.min(.035, angDiff(want, e.t)));
+    if (ty.sp) {
+      if (e.mt <= 0) { e.h = Math.random() < .35 ? want + (Math.random() - .5) : Math.floor(Math.random() * 8) * Math.PI / 4; e.mt = 60 + Math.random() * 120 | 0; }
+      const ox = e.x, oy = e.y; mv(e, Math.cos(e.h) * ty.sp, Math.sin(e.h) * ty.sp); e.ba = e.h;
+      if (Math.abs(e.x - ox) + Math.abs(e.y - oy) < ty.sp * .3) e.mt = 0;
+    }
+    if (e.cd <= 0 && !p.dead && Math.abs(angDiff(want, e.t)) < .12 && los(e, p)) { if (shoot(e, ty.bs, ty.bn, ty.mb)) e.cd = ty.cd + Math.random() * 40; }
+    if (ty.ml && --e.mc <= 0) { e.mc = 300 + Math.random() * 300 | 0; if (mines.filter((m) => m.o === e).length < 2) mines.push({ x: e.x, y: e.y, t: 540, o: e }); }
+  }
+  function upd() {
+    const p = player;
+    if (p.inv > 0) p.inv--;
+    if (!p.dead) {
+      const dx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0), dy = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
+      if (dx || dy) { const l = Math.hypot(dx, dy), s = 2.2 * (1 + .1 * ups.speed); mv(p, dx / l * s, dy / l * s); p.ba = Math.atan2(dy, dx); }
+      p.t = Math.atan2(my - p.y, mx - p.x);
+      enemies.forEach(ai);
+      for (const c of coinsArr) if (Math.hypot(c.x - p.x, c.y - p.y) < R + 8) { coins += c.v; c.got = 1; }
+      coinsArr = coinsArr.filter((c) => !c.got);
+    }
+    for (const b of bullets) {
+      b.age++;
+      let bx = wallAt(b.x + b.vx, b.y), by = wallAt(b.x, b.y + b.vy);
+      if (!bx && !by && wallAt(b.x + b.vx, b.y + b.vy)) bx = by = true;
+      if (bx || by) { if (b.n >= b.max) { b.dead = true; explode(b); continue; } b.n++; if (bx) b.vx *= -1; if (by) b.vy *= -1; }
+      b.x += b.vx; b.y += b.vy;
+    }
+    for (let i = 0; i < bullets.length; i++) for (let j = i + 1; j < bullets.length; j++) {
+      const a = bullets[i], b = bullets[j]; if (!a.dead && !b.dead && Math.hypot(a.x - b.x, a.y - b.y) < 7) { a.dead = b.dead = true; boom(a.x, a.y, 10); }
+    }
+    for (const b of bullets) {
+      if (b.dead) continue;
+      for (const t of alive()) {
+        if (b.o === t && b.age < 12) continue;
+        if (t.p && t.inv > 0) continue;
+        if (Math.hypot(b.x - t.x, b.y - t.y) < R + 3) { b.dead = true; if (t.p) hurt(); else kill(t); explode(b); break; }
+      }
+    }
+    bullets = bullets.filter((b) => !b.dead);
+    for (const m of mines) {
+      m.t--;
+      if (m.t <= 0) {
+        m.dead = true; boom(m.x, m.y, 70);
+        if (!player.dead && Math.hypot(player.x - m.x, player.y - m.y) < 70) hurt();
+        enemies.forEach((e) => { if (!e.dead && Math.hypot(e.x - m.x, e.y - m.y) < 70) kill(e); });
+      }
+    }
+    mines = mines.filter((m) => !m.dead);
+    fx.forEach((f) => f.r += (f.max - f.r) * .12 + .4); fx = fx.filter((f) => f.r < f.max - .5);
+  }
+  function tick() {
+    if (state === 'play') {
+      upd();
+      if (!player.dead && enemies.every((e) => e.dead)) { state = 'win'; timer = 60; if (mission % 5 === 0) { lives++; bonus = true; } else bonus = false; }
+    } else if (state === 'dead') { upd(); if (--timer <= 0) { lives--; state = lives > 0 ? 'lost' : 'over'; } }
+    else if (state === 'win') {
+      upd();
+      if (--timer <= 0) {
+        const left = coinsArr.reduce((s, c) => s + c.v, 0), bon = 10 + mission * 2;
+        gained = left + bon; coins += gained; coinsArr = []; state = 'shop';
+      }
+    } else if (state === 'intro') { if (--timer <= 0) state = 'play'; }
+  }
+  function adv() {
+    if (state === 'title') startMission();
+    else if (state === 'intro') state = 'play';
+    else if (state === 'lost') { coins = coinsStart; startMission(); }
+    else if (state === 'shop') { mission++; startMission(); }
+    else if (state === 'over') { mission = 1; lives = 3; kills = 0; coins = 0; shield = 0; ups = { bounce: 0, ammo: 0, bspeed: 0, speed: 0, explosive: 0 }; startMission(); }
+  }
+  /* drawing: black lines on white */
+  function drawTank(t, isPlayer) {
+    ctx.save(); ctx.translate(t.x, t.y);
+    ctx.save(); ctx.rotate(t.ba || 0);
+    ctx.fillStyle = '#fff'; ctx.fillRect(-14, -10, 28, 20); ctx.strokeRect(-14, -10, 28, 20);
+    ctx.beginPath(); ctx.moveTo(-14, -5); ctx.lineTo(14, -5); ctx.moveTo(-14, 5); ctx.lineTo(14, 5); ctx.stroke();
+    if (!isPlayer) for (let i = 0; i < t.type; i++) { ctx.beginPath(); ctx.moveTo(-10 + i * 4, -2); ctx.lineTo(-10 + i * 4, 2); ctx.stroke(); }
+    ctx.restore();
+    ctx.rotate(t.t);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(26, 0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.fillStyle = isPlayer ? '#000' : '#fff'; ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+  function txt(s, x, y, sz, al) { ctx.fillStyle = '#000'; ctx.font = 'bold ' + sz + 'px monospace'; ctx.textAlign = al || 'center'; ctx.fillText(s, x, y); }
+  function overlay(a, b, c) {
+    ctx.fillStyle = '#fff'; ctx.fillRect(150, H / 2 - 80, 500, 160); ctx.strokeRect(150, H / 2 - 80, 500, 160);
+    txt(a, W / 2, H / 2 - 25, 34); txt(b, W / 2, H / 2 + 10, 16); if (c) txt(c, W / 2, H / 2 + 50, 13);
+  }
+  function drawField() {
+    if (!g) { txt('TANKS!', W / 2, H / 2 - 10, 72); txt('Click to start', W / 2, H / 2 + 40, 20); txt('Destroy every enemy tank. Collect coins, buy upgrades.', W / 2, H / 2 + 75, 14); return; }
+    wrecks.forEach((w) => { ctx.beginPath(); ctx.moveTo(w.x - 9, w.y - 9); ctx.lineTo(w.x + 9, w.y + 9); ctx.moveTo(w.x + 9, w.y - 9); ctx.lineTo(w.x - 9, w.y + 9); ctx.stroke(); });
+    for (let y = 0; y < RW; y++) for (let x = 0; x < C; x++) if (g[y][x]) {
+      ctx.strokeRect(x * T + 1, y * T + 1, T - 2, T - 2);
+      ctx.beginPath(); ctx.moveTo(x * T + 1, y * T + 1); ctx.lineTo(x * T + T - 1, y * T + T - 1); ctx.stroke();
+    }
+    coinsArr.forEach((c) => { ctx.beginPath(); ctx.arc(c.x, c.y, 7, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(c.x, c.y, 3, 0, 7); ctx.stroke(); });
+    mines.forEach((m) => {
+      ctx.beginPath(); ctx.arc(m.x, m.y, 8, 0, 7); ctx.stroke();
+      if (!(m.t < 120 && (m.t / 8 | 0) % 2)) { ctx.beginPath(); ctx.moveTo(m.x - 5, m.y); ctx.lineTo(m.x + 5, m.y); ctx.moveTo(m.x, m.y - 5); ctx.lineTo(m.x, m.y + 5); ctx.stroke(); }
+    });
+    enemies.forEach((e) => { if (!e.dead) drawTank(e, false); });
+    if (!player.dead) {
+      if (!(player.inv > 0 && (player.inv / 4 | 0) % 2)) drawTank(player, true);
+      if (shield > 0) { ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.arc(player.x, player.y, 22, 0, 7); ctx.stroke(); ctx.setLineDash([]); }
+    }
+    ctx.fillStyle = '#000'; bullets.forEach((b) => {
+      ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, 7); ctx.fill();
+      if (b.o === player && ups.explosive) { ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, 7); ctx.stroke(); }
+    });
+    fx.forEach((f) => { ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.arc(f.x, f.y, f.r * .5, 0, 7); ctx.stroke(); });
+    if (state === 'play' && !player.dead) { ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(mx, my, 7, 0, 7); ctx.moveTo(mx - 11, my); ctx.lineTo(mx + 11, my); ctx.moveTo(mx, my - 11); ctx.lineTo(mx + 0, my + 11); ctx.stroke(); ctx.lineWidth = 2; }
+    if (state === 'intro') overlay('Mission ' + mission, 'Enemy tanks: ' + enemies.length, 'Click or press Enter to begin');
+    if (state === 'lost') overlay('Tank destroyed', 'Lives left: ' + lives, 'Click to retry Mission ' + mission);
+    if (state === 'over') overlay('Game over', 'Reached Mission ' + mission + ' with ' + kills + ' kills', 'Click to play again');
+  }
+  const ROW0 = 120, ROWH = 48;
+  function drawShop() {
+    txt('MISSION ' + mission + ' CLEARED', W / 2, 70, 30);
+    txt((bonus ? 'Bonus life earned!  ' : '') + 'Coins collected: +' + gained + '     Wallet: ' + coins, W / 2, 100, 16);
+    ITEMS.forEach((it, i) => {
+      const y = ROW0 + i * ROWH, ok = canBuy(it), max = lvl(it) >= it.max;
+      ctx.setLineDash(ok ? [] : [6, 5]); ctx.strokeRect(100, y, 600, 44); ctx.setLineDash([]);
+      txt((i + 1) + '. ' + it.n, 112, y + 19, 16, 'left'); txt(it.d, 112, y + 37, 12, 'left');
+      txt(max ? 'MAX' : 'Cost: ' + cost(it), 688, y + 19, 16, 'right');
+      txt(it.k === 'shield' ? 'Owned: ' + shield : it.k === 'life' ? 'Lives: ' + lives : 'Level ' + ups[it.k] + '/' + it.max, 688, y + 37, 12, 'right');
+    });
+    ctx.strokeRect(300, 486, 200, 44); txt('Continue ▶', W / 2, 514, 18);
+    txt('Enter / Space to continue', W / 2, 562, 12);
+  }
+  function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(0, OY - 1); ctx.lineTo(W, OY - 1); ctx.stroke();
+    if (g) {
+      txt('Mission ' + mission + '  Enemies: ' + enemies.filter((e) => !e.dead).length + '  Coins: ' + coins, 10, 26, 14, 'left');
+      txt('Lives: ' + lives + '  Shield: ' + shield + '  Kills: ' + kills, W - 10, 26, 14, 'right');
+    }
+    if (state === 'shop') { drawShop(); return; }
+    ctx.save(); ctx.translate(0, OY);
+    ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+    drawField();
+    ctx.restore();
+    ctx.strokeRect(1, OY + 1, W - 2, H - 2);
+  }
+
+  /* window plumbing: fixed 60 Hz step, paused while this window is not in front */
+  const STEP = 1000 / 60;
+  let last = performance.now(), acc = 0, raf = 0, gone = false, wasActive = true;
+  function loop(now) {
+    if (gone) return;
+    const on = active === win && !win.minimized;
+    acc += Math.min(now - last, 250); last = now;
+    if (on) { while (acc >= STEP) { tick(); acc -= STEP; } }
+    else { acc = 0; keys = {}; }
+    if (!win.minimized) {
+      draw();
+      if (!on && g && (state === 'play' || state === 'intro')) {
+        ctx.fillStyle = '#fff'; ctx.fillRect(250, 250, 300, 80); ctx.strokeRect(250, 250, 300, 80);
+        txt('PAUSED', W / 2, 288, 28); txt('Click to resume', W / 2, 314, 14);
+      }
+    }
+    wasActive = on;
+    raf = requestAnimationFrame(loop);
+  }
+  function pos(e) {
+    const r = cv.getBoundingClientRect();
+    rawX = (e.clientX - r.left) * cv.width / r.width; rawY = (e.clientY - r.top) * cv.height / r.height; mx = rawX; my = rawY - OY;
+  }
+  function layMine() { if (state === 'play' && !player.dead && mines.filter((m) => m.o === player).length < 2) mines.push({ x: player.x, y: player.y, t: 540, o: player }); }
+  cv.addEventListener('pointermove', pos);
+  cv.addEventListener('contextmenu', (e) => e.preventDefault());
+  cv.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); pos(e);
+    if (!wasActive) return;
+    if (state === 'shop') {
+      if (rawX >= 100 && rawX <= 700 && rawY >= ROW0 && rawY < ROW0 + ITEMS.length * ROWH) { const i = Math.floor((rawY - ROW0) / ROWH); if (rawY - ROW0 - i * ROWH < 44) buy(i); }
+      else if (rawX >= 300 && rawX <= 500 && rawY >= 486 && rawY <= 530) adv();
+      return;
+    }
+    if (state === 'play' && !player.dead) {
+      if (e.button === 2) layMine(); else shoot(player, 4 * (1 + .25 * ups.bspeed), 1 + ups.bounce, 5 + ups.ammo);
+    } else adv();
+  });
+  function kd(e) {
+    if (active !== win || win.minimized) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    const k = e.key.toLowerCase();
+    if ((k === 'enter' || k === ' ') && e.target.closest && e.target.closest('button')) return;
+    keys[k] = 1;
+    if (state === 'shop' && k >= '1' && k <= '7') { buy(+k - 1); return; }
+    if (k === ' ') { e.preventDefault(); state === 'play' ? layMine() : adv(); }
+    if (k === 'enter') adv();
+    if (k.indexOf('arrow') === 0) e.preventDefault();
+  }
+  function ku(e) { keys[e.key.toLowerCase()] = 0; }
+  const clearKeys = () => { keys = {}; };
+  document.addEventListener('keydown', kd);
+  document.addEventListener('keyup', ku);
+  window.addEventListener('blur', clearKeys);
+
+  /* layout: canvas scaled to fit the window, 4:3 */
+  const stage = h('div', { class: 'tstage' }, cv);
+  const fit = () => {
+    const r = stage.getBoundingClientRect();
+    const aw = r.width - 12, ah = r.height - 12;
+    if (aw <= 0 || ah <= 0) return;
+    const s = Math.min(aw / 800, ah / 600);
+    cv.style.width = Math.floor(800 * s) + 'px'; cv.style.height = Math.floor(600 * s) + 'px';
+  };
+  const ro = new ResizeObserver(fit); ro.observe(stage);
+  const touch = window.matchMedia('(pointer: coarse)').matches;
+  const parts = [stage];
+  if (touch) {
+    const hold = (label, key) => h('button', { class: 'btn', type: 'button', 'aria-label': 'Move ' + label,
+      onpointerdown: (e) => { e.preventDefault(); keys[key] = 1; },
+      onpointerup: () => { keys[key] = 0; }, onpointerleave: () => { keys[key] = 0; }, onpointercancel: () => { keys[key] = 0; } }, label);
+    parts.push(h('div', { class: 'tpad' },
+      h('div', { class: 'dp' }, hold('←', 'arrowleft'), hold('↑', 'arrowup'), hold('↓', 'arrowdown'), hold('→', 'arrowright')),
+      h('button', { class: 'btn', type: 'button', onpointerdown: (e) => { e.preventDefault(); layMine(); } }, 'Mine')));
+  }
+  parts.push(h('div', { class: 'thint' }, touch
+    ? 'Drag to aim, tap to fire. Use the arrows to drive and Mine to drop a mine. In the shop, tap a row to buy.'
+    : 'WASD / arrows: move · Mouse: aim · Click: fire · Space or right-click: mine · Shop: click a row or press 1–7'));
+  win.body.append.apply(win.body, parts);
+  win.onClose = () => {
+    gone = true; cancelAnimationFrame(raf); ro.disconnect();
+    document.removeEventListener('keydown', kd); document.removeEventListener('keyup', ku);
+    window.removeEventListener('blur', clearKeys);
+  };
+  if (bounds().w < 600) toggleMax(win);
+  fit();
+  raf = requestAnimationFrame(loop);
+}
+
+})();
+</script>
+
+</body></html>
